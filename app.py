@@ -8,8 +8,16 @@ SUSPICIOUS_PATTERNS = [
     (r'coinhive|cryptonight|minero\.cc', 'Обнаружен потенциальный скрипт криптомайнера'),
     (r'<iframe[^>]+(display:\s*none|visibility:\s*hidden|width=["\']?0)', 'Обнаружен скрытый iframe (возможный редирект или загрузка вирусов)'),
     (r'eval\(base64_decode|eval\(atob\(|document\.write\(unescape\(', 'Обнаружен обфусцированный (скрытый) JavaScript-код'),
-    (r'window\.location\s*=\s*["\']http', 'Обнаружен принудительный JS-редирект')
+    (r'window\.location\s*=\s*["\']http', 'Обнаружен принудительный JS-редирект'),
+    (r'href=["\'][^"\']+\.(exe|scr|bat|msi|vbs)["\']', 'На странице есть прямые ссылки на исполняемые файлы (.exe/.bat/.msi)')
 ]
+
+BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Referer': 'https://www.google.com/'
+}
 
 @app.route('/')
 def index():
@@ -31,7 +39,7 @@ def scan():
     domain = target_url.replace('https://', '').replace('http://', '').split('/')[0]
 
     try:
-        resp = requests.get(target_url, timeout=8, headers={'User-Agent': 'Mozilla/5.0 SecurityScanner/1.0'})
+        resp = requests.get(target_url, timeout=10, headers=BROWSER_HEADERS)
         html = resp.text
         headers = resp.headers
 
@@ -46,9 +54,12 @@ def scan():
             sec_headers.append('CSP')
 
         threats = []
-        for pattern, description in SUSPICIOUS_PATTERNS:
-            if re.search(pattern, html, re.IGNORECASE):
-                threats.append(description)
+        if resp.status_code in (403, 503) or 'cf-mitigated' in headers:
+            threats.append(f'Сайт заблокировал доступ сканеру (HTTP {resp.status_code} / защита от ботов) — проверить исходный код невозможно')
+        else:
+            for pattern, description in SUSPICIOUS_PATTERNS:
+                if re.search(pattern, html, re.IGNORECASE):
+                    threats.append(description)
 
         return jsonify({
             'domain': domain,
