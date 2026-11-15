@@ -16,22 +16,22 @@
     button:disabled { opacity: 0.6; cursor: wait; }
     .loader { display: none; text-align: center; margin-top: 20px; color: #34d399; font-family: monospace; }
     .res { display: none; margin-top: 25px; padding: 20px; border-radius: 10px; background: #1f2937; }
-    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #374151; font-size: 14px; }
+    .item { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 10px 0; border-bottom: 1px solid #374151; font-size: 14px; }
     .item:last-child { border-bottom: none; }
-    .ok { color: #34d399; font-weight: 600; }
-    .warn { color: #fbbf24; font-weight: 600; }
-    .danger { color: #f87171; font-weight: 600; }
+    .ok { color: #34d399; font-weight: 600; text-align: right; }
+    .warn { color: #fbbf24; font-weight: 600; text-align: right; }
+    .danger { color: #f87171; font-weight: 600; text-align: right; }
   </style>
 </head>
 <body>
 <div class="box">
   <h1>🛡️ Реальный сканер безопасности</h1>
-  <p class="sub">Анализ исходного кода страницы, SSL-сертификата и заголовков защиты</p>
+  <p class="sub">Анализ кода страницы, SSL, заголовков защиты и баз 90+ антивирусов</p>
   <div class="row">
-    <input type="text" id="urlInput" placeholder="Введите домен (например: wikipedia.org)">
+    <input type="text" id="urlInput" placeholder="Введите домен (например: thelastdb.games)">
     <button id="scanBtn" onclick="scanSite()">Проверить</button>
   </div>
-  <div class="loader" id="loader">Сканирование HTML-кода и заголовков сервера...</div>
+  <div class="loader" id="loader">Проверка кода сайта и сверка с базами антивирусов...</div>
   <div class="res" id="resultBox"></div>
 </div>
 
@@ -60,8 +60,18 @@
       btn.disabled = false;
       box.style.display = 'block';
 
+      let vtHtml = '<span class="warn">Нет данных API</span>';
+      if (data.vt) {
+        vtHtml = data.vt.malicious > 0
+          ? `<span class="danger">⚠️ Обнаружены угрозы: ${data.vt.malicious} из ${data.vt.total} антивирусов</span>`
+          : `<span class="ok">Чисто (0 из ${data.vt.total} антивирусов)</span>`;
+      }
+
       if (data.error) {
-        box.innerHTML = `<div class="danger">⚠️ ${data.error}</div>`;
+        box.innerHTML = `
+          <div class="danger" style="text-align:left; margin-bottom:10px;">⚠️ ${data.error}</div>
+          <div class="item"><span>База антивирусов (VirusTotal):</span>${vtHtml}</div>
+        `;
         return;
       }
 
@@ -75,12 +85,13 @@
 
       box.innerHTML = `
         <h3 style="margin-top:0; color:#fff;">Отчёт: ${data.domain}</h3>
+        <div class="item"><span>База антивирусов (VirusTotal):</span>${vtHtml}</div>
         <div class="item"><span>Статус ответа сервера:</span><span class="ok">HTTP ${data.status_code}</span></div>
         <div class="item"><span>Шифрование HTTPS:</span><span class="${data.is_https ? 'ok' : 'danger'}">${data.is_https ? 'Активно' : 'Не защищено'}</span></div>
         <div class="item"><span>Заголовки безопасности:</span>${headersHtml}</div>
         <div class="item"><span>Анализ кода на взлом:</span>${threatsHtml}</div>
         <div style="margin-top:15px; font-size:13px;">
-          <a href="https://www.virustotal.com/gui/domain/${data.domain}" target="_blank" style="color:#60a5fa;">Проверить по базам 70+ антивирусов (VirusTotal) →</a>
+          <a href="https://www.virustotal.com/gui/domain/${data.domain}" target="_blank" style="color:#60a5fa;">Открыть подробный отчёт по вендорам →</a>
         </div>
       `;
     } catch (e) {
