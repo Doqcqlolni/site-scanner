@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>О сканере — SiteGuard</title>
+  <style>
+    body { margin: 0; background: #090d16; color: #e2e8f0; font-family: system-ui, sans-serif; padding: 30px 20px; }
+    .container { max-width: 720px; margin: 0 auto; background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 30px; line-height: 1.6; }
+    nav { display: flex; justify-content: center; gap: 20px; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid #1f2937; }
+    nav a { color: #9ca3af; text-decoration: none; font-weight: 600; font-size: 14px; }
+    nav a.active, nav a:hover { color: #10b981; }
+    h1 { margin: 0 0 15px; font-size: 24px; color: #fff; text-align: center; }
+    .card { background: #1f2937; padding: 16px 20px; border-radius: 10px; margin-bottom: 14px; }
+    .card h3 { margin: 0 0 6px; color: #34d399; font-size: 16px; }
+    .card p { margin: 0; font-size: 14px; color: #d1d5db; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <nav>
+    <a href="/">🛡️ Сканер</a>
+    <a href="/history">🕒 История проверок</a>
+    <a href="/about" class="active">ℹ️ О проекте</a>
+  </nav>
+
+  <h1>Как работает анализ безопасности</h1>
+
+  <div class="card">
+    <h3>1. Проверка по базам 90+ антивирусов (VirusTotal API)</h3>
+    <p>Сервер запрашивает актуальную репутацию домена у ведущих антивирусных лабораторий (Kaspersky, Dr.Web, BitDefender, Fortinet и др.) и выводит точный список срабатываний.</p>
+  </div>
+
+  <div class="card">
+    <h3>2. Аудит заголовков защиты сервера</h3>
+    <p>Проверяется наличие HSTS, Content-Security-Policy, X-Frame-Options и других заголовков, защищающих пользователей от XSS-атак и подмены страниц.</p>
+  </div>
+
+  <div class="card">
+    <h3>3. Сигнатурный анализ HTML-кода</h3>
+    <p>Сканер ищет в исходном коде страницы скрытые iframe-вставки, скрипты браузерного майнинга, обфусцированный JavaScript (eval/atob) и прямые ссылки на исполняемые файлы.</p>
+  </div>
+</div>
+</body>
+</html>
