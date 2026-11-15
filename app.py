@@ -1,3 +1,4 @@
+import os
 import re
 import requests
 from flask import Flask, render_template, request, jsonify
@@ -19,6 +20,25 @@ BROWSER_HEADERS = {
     'Referer': 'https://www.google.com/'
 }
 
+def check_virustotal(domain):
+    api_key = os.environ.get('VT_API_KEY')
+    if not api_key:
+        return None
+    try:
+        vt_resp = requests.get(
+            f'https://www.virustotal.com/api/v3/domains/{domain}',
+            headers={'x-apikey': api_key},
+            timeout=6
+        )
+        if vt_resp.status_code == 200:
+            stats = vt_resp.json()['data']['attributes']['last_analysis_stats']
+            malicious = stats.get('malicious', 0) + stats.get('suspicious', 0)
+            total = sum(stats.values())
+            return {'malicious': malicious, 'total': total}
+    except Exception:
+        pass
+    return None
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -37,6 +57,7 @@ def scan():
         target_url = raw_url
 
     domain = target_url.replace('https://', '').replace('http://', '').split('/')[0]
+    vt_data = check_virustotal(domain)
 
     try:
         resp = requests.get(target_url, timeout=10, headers=BROWSER_HEADERS)
@@ -55,7 +76,7 @@ def scan():
 
         threats = []
         if resp.status_code in (403, 503) or 'cf-mitigated' in headers:
-            threats.append(f'Сайт заблокировал доступ сканеру (HTTP {resp.status_code} / защита от ботов) — проверить исходный код невозможно')
+            threats.append(f'Сайт заблокировал доступ сканеру (HTTP {resp.status_code}) — прямая проверка кода невозможна')
         else:
             for pattern, description in SUSPICIOUS_PATTERNS:
                 if re.search(pattern, html, re.IGNORECASE):
@@ -63,17 +84,17 @@ def scan():
 
         return jsonify({
             'domain': domain,
-            'final_url': resp.url,
             'status_code': resp.status_code,
             'is_https': is_https,
             'sec_headers': sec_headers,
-            'threats': threats
+            'threats': threats,
+            'vt': vt_data
         })
 
     except requests.exceptions.SSLError:
-        return jsonify({'error': f'Ошибка SSL-сертификата у {domain}! Соединение небезопасно.'}), 200
+        return jsonify({'error': f'Ошибка SSL-сертификата у {domain}! Соединение небезопасно.', 'vt': vt_data}), 200
     except requests.exceptions.RequestException:
-        return jsonify({'error': f'Не удалось подключиться к {domain}. Проверьте правильность адреса.'}), 200
+        return jsonify({'error': f'Не удалось подключиться к {domain}. Проверьте правильность адреса.', 'vt': vt_data}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
