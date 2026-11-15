@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SiteGuard — Сканер уязвимостей и взлома</title>
+  <style>
+    body { margin: 0; background: #090d16; color: #e2e8f0; font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .box { width: 100%; max-width: 650px; background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 35px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    h1 { margin: 0 0 8px; font-size: 26px; color: #fff; text-align: center; }
+    .sub { text-align: center; color: #9ca3af; margin-bottom: 25px; font-size: 14px; }
+    .row { display: flex; gap: 10px; }
+    input { flex: 1; padding: 14px 16px; border-radius: 10px; border: 1px solid #374151; background: #1f2937; color: #fff; font-size: 15px; outline: none; }
+    input:focus { border-color: #10b981; }
+    button { padding: 14px 24px; background: #10b981; color: #022c22; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; font-size: 15px; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .loader { display: none; text-align: center; margin-top: 20px; color: #34d399; font-family: monospace; }
+    .res { display: none; margin-top: 25px; padding: 20px; border-radius: 10px; background: #1f2937; }
+    .item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #374151; font-size: 14px; }
+    .item:last-child { border-bottom: none; }
+    .ok { color: #34d399; font-weight: 600; }
+    .warn { color: #fbbf24; font-weight: 600; }
+    .danger { color: #f87171; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h1>🛡️ Реальный сканер безопасности</h1>
+  <p class="sub">Анализ исходного кода страницы, SSL-сертификата и заголовков защиты</p>
+  <div class="row">
+    <input type="text" id="urlInput" placeholder="Введите домен (например: wikipedia.org)">
+    <button id="scanBtn" onclick="scanSite()">Проверить</button>
+  </div>
+  <div class="loader" id="loader">Сканирование HTML-кода и заголовков сервера...</div>
+  <div class="res" id="resultBox"></div>
+</div>
+
+<script>
+  async function scanSite() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) return alert('Введите адрес сайта!');
+
+    const btn = document.getElementById('scanBtn');
+    const loader = document.getElementById('loader');
+    const box = document.getElementById('resultBox');
+
+    btn.disabled = true;
+    loader.style.display = 'block';
+    box.style.display = 'none';
+
+    try {
+      const response = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await response.json();
+
+      loader.style.display = 'none';
+      btn.disabled = false;
+      box.style.display = 'block';
+
+      if (data.error) {
+        box.innerHTML = `<div class="danger">⚠️ ${data.error}</div>`;
+        return;
+      }
+
+      const threatsHtml = data.threats.length === 0
+        ? `<span class="ok">Вредоносных вставок не найдено</span>`
+        : `<span class="danger">${data.threats.join('<br>')}</span>`;
+
+      const headersHtml = data.sec_headers.length > 0
+        ? `<span class="ok">${data.sec_headers.join(', ')}</span>`
+        : `<span class="warn">Отсутствуют (слабая защита)</span>`;
+
+      box.innerHTML = `
+        <h3 style="margin-top:0; color:#fff;">Отчёт: ${data.domain}</h3>
+        <div class="item"><span>Статус ответа сервера:</span><span class="ok">HTTP ${data.status_code}</span></div>
+        <div class="item"><span>Шифрование HTTPS:</span><span class="${data.is_https ? 'ok' : 'danger'}">${data.is_https ? 'Активно' : 'Не защищено'}</span></div>
+        <div class="item"><span>Заголовки безопасности:</span>${headersHtml}</div>
+        <div class="item"><span>Анализ кода на взлом:</span>${threatsHtml}</div>
+        <div style="margin-top:15px; font-size:13px;">
+          <a href="https://www.virustotal.com/gui/domain/${data.domain}" target="_blank" style="color:#60a5fa;">Проверить по базам 70+ антивирусов (VirusTotal) →</a>
+        </div>
+      `;
+    } catch (e) {
+      loader.style.display = 'none';
+      btn.disabled = false;
+      alert('Ошибка соединения с сервером сканера');
+    }
+  }
+</script>
+</body>
+</html>
