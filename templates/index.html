@@ -6,21 +6,56 @@
   <title>SiteGuard — Сканер уязвимостей и взлома</title>
   <style>
     body { margin: 0; background: #090d16; color: #e2e8f0; font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .box { width: 100%; max-width: 650px; background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 35px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .box { width: 100%; max-width: 680px; background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 35px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
     h1 { margin: 0 0 8px; font-size: 26px; color: #fff; text-align: center; }
     .sub { text-align: center; color: #9ca3af; margin-bottom: 25px; font-size: 14px; }
     .row { display: flex; gap: 10px; }
     input { flex: 1; padding: 14px 16px; border-radius: 10px; border: 1px solid #374151; background: #1f2937; color: #fff; font-size: 15px; outline: none; }
     input:focus { border-color: #10b981; }
-    button { padding: 14px 24px; background: #10b981; color: #022c22; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; font-size: 15px; }
-    button:disabled { opacity: 0.6; cursor: wait; }
+    button.primary { padding: 14px 24px; background: #10b981; color: #022c22; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; font-size: 15px; }
+    button.primary:disabled { opacity: 0.6; cursor: wait; }
     .loader { display: none; text-align: center; margin-top: 20px; color: #34d399; font-family: monospace; }
-    .res { display: none; margin-top: 25px; padding: 20px; border-radius: 10px; background: #1f2937; }
+    .res { display: none; margin-top: 25px; padding: 22px; border-radius: 12px; background: #1f2937; border: 1px solid #374151; }
     .item { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 10px 0; border-bottom: 1px solid #374151; font-size: 14px; }
     .item:last-child { border-bottom: none; }
     .ok { color: #34d399; font-weight: 600; text-align: right; }
     .warn { color: #fbbf24; font-weight: 600; text-align: right; }
     .danger { color: #f87171; font-weight: 600; text-align: right; }
+    .details-btn {
+      width: 100%;
+      margin-top: 16px;
+      padding: 11px;
+      background: #111827;
+      color: #60a5fa;
+      border: 1px solid #374151;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .details-btn:hover { background: #1e293b; border-color: #60a5fa; }
+    .details-panel {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background: #111827;
+      border-radius: 10px;
+      border: 1px solid #374151;
+      font-size: 13px;
+    }
+    .section-title {
+      color: #9ca3af;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 14px 0 8px;
+      font-weight: 700;
+    }
+    .section-title:first-child { margin-top: 0; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .tag-bad { background: #7f1d1d40; color: #fca5a5; border: 1px solid #991b1b; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+    .tag-good { background: #064e3b40; color: #6ee7b7; border: 1px solid #065f46; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -29,18 +64,31 @@
     <a href="/" style="color:#10b981; text-decoration:none;">🛡️ Сканер</a>
     <a href="/history" style="color:#9ca3af; text-decoration:none;">🕒 История проверок</a>
     <a href="/about" style="color:#9ca3af; text-decoration:none;">ℹ️ О проекте</a>
-  </div> 
+  </div>
+
   <h1>🛡️ Реальный сканер безопасности</h1>
   <p class="sub">Анализ кода страницы, SSL, заголовков защиты и баз 90+ антивирусов</p>
   <div class="row">
     <input type="text" id="urlInput" placeholder="Введите домен (например: thelastdb.games)">
-    <button id="scanBtn" onclick="scanSite()">Проверить</button>
+    <button class="primary" id="scanBtn" onclick="scanSite()">Проверить</button>
   </div>
-  <div class="loader" id="loader">Проверка кода сайта и сверка с базами антивирусов...</div>
+  <div class="loader" id="loader">Сбор полного досье о сайте и проверка по базам...</div>
   <div class="res" id="resultBox"></div>
 </div>
 
 <script>
+  function toggleDetails() {
+    const panel = document.getElementById('detailsPanel');
+    const btn = document.getElementById('detailsBtn');
+    if (panel.style.display === 'none' || panel.style.display === '') {
+      panel.style.display = 'block';
+      btn.innerText = 'Скрыть подробности ▲';
+    } else {
+      panel.style.display = 'none';
+      btn.innerText = 'Подробнее о сайте ▼';
+    }
+  }
+
   async function scanSite() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) return alert('Введите адрес сайта!');
@@ -75,6 +123,7 @@
       if (data.error) {
         box.innerHTML = `
           <div class="danger" style="text-align:left; margin-bottom:10px;">⚠️ ${data.error}</div>
+          <div class="item"><span>IP-адрес сервера:</span><span>${data.ip || 'Неизвестно'}</span></div>
           <div class="item"><span>База антивирусов (VirusTotal):</span>${vtHtml}</div>
         `;
         return;
@@ -88,6 +137,36 @@
         ? `<span class="ok">${data.sec_headers.join(', ')}</span>`
         : `<span class="warn">Отсутствуют (слабая защита)</span>`;
 
+      let headersAuditHtml = data.headers_audit.map(h => `
+        <div class="item">
+          <span>${h.name} <small style="color:#9ca3af;">(${h.desc})</small></span>
+          <span class="${h.present ? 'ok' : 'danger'}">${h.present ? '✓ Есть' : '✗ Нет'}</span>
+        </div>
+      `).join('');
+
+      let vtDetailsHtml = '<div style="color:#9ca3af;">Данные VirusTotal недоступны</div>';
+      if (data.vt) {
+        const vendorsHtml = data.vt.flagged_vendors.length > 0
+          ? `<div class="tag-list">${data.vt.flagged_vendors.map(v => `<span class="tag-bad">${v}</span>`).join('')}</div>`
+          : `<div class="tag-list"><span class="tag-good">Ни один антивирус не зафиксировал угроз</span></div>`;
+
+        vtDetailsHtml = `
+          <div class="item"><span>Регистратор домена:</span><span>${data.vt.registrar}</span></div>
+          <div class="item"><span>Рейтинг сообщества VT:</span><span class="${data.vt.reputation < 0 ? 'danger' : 'ok'}">${data.vt.reputation}</span></div>
+          <div style="margin-top:8px; color:#d1d5db;">Сработавшие антивирусы:</div>
+          ${vendorsHtml}
+        `;
+      }
+
+      let codeStatsHtml = data.page_stats.accessible
+        ? `
+          <div class="item"><span>Заголовок страницы (Title):</span><span style="text-align:right;">${data.page_stats.title}</span></div>
+          <div class="item"><span>Скриптов (&lt;script&gt;):</span><span class="ok">${data.page_stats.scripts_count} шт.</span></div>
+          <div class="item"><span>Форм ввода (&lt;form&gt;):</span><span>${data.page_stats.forms_count} шт.</span></div>
+          <div class="item"><span>Встроенных фреймов (&lt;iframe&gt;):</span><span class="${data.page_stats.iframes_count > 0 ? 'warn' : 'ok'}">${data.page_stats.iframes_count} шт.</span></div>
+        `
+        : `<div class="danger" style="text-align:left;">✗ Исходный код скрыт сервером (HTTP ${data.status_code}) — подсчёт элементов невозможен.</div>`;
+
       box.innerHTML = `
         <h3 style="margin-top:0; color:#fff;">Отчёт: ${data.domain}</h3>
         <div class="item"><span>База антивирусов (VirusTotal):</span>${vtHtml}</div>
@@ -95,8 +174,24 @@
         <div class="item"><span>Шифрование HTTPS:</span><span class="${data.is_https ? 'ok' : 'danger'}">${data.is_https ? 'Активно' : 'Не защищено'}</span></div>
         <div class="item"><span>Заголовки безопасности:</span>${headersHtml}</div>
         <div class="item"><span>Анализ кода на взлом:</span>${threatsHtml}</div>
-        <div style="margin-top:15px; font-size:13px;">
-          <a href="https://www.virustotal.com/gui/domain/${data.domain}" target="_blank" style="color:#60a5fa;">Открыть подробный отчёт по вендорам →</a>
+
+        <button class="details-btn" id="detailsBtn" onclick="toggleDetails()">Подробнее о сайте ▼</button>
+
+        <div class="details-panel" id="detailsPanel">
+          <div class="section-title">1. Сеть и сервер</div>
+          <div class="item"><span>IP-адрес:</span><span>${data.ip}</span></div>
+          <div class="item"><span>Веб-сервер / CDN:</span><span>${data.server}</span></div>
+          <div class="item"><span>Скорость отклика:</span><span>${data.response_ms} мс</span></div>
+          <div class="item"><span>Конечный URL:</span><span style="word-break:break-all; text-align:right;">${data.final_url}</span></div>
+
+          <div class="section-title">2. Анализ HTML-структуры</div>
+          ${codeStatsHtml}
+
+          <div class="section-title">3. Заголовки защиты (что есть / чего нет)</div>
+          ${headersAuditHtml}
+
+          <div class="section-title">4. Детали из базы VirusTotal</div>
+          ${vtDetailsHtml}
         </div>
       `;
     } catch (e) {
