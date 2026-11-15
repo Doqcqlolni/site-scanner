@@ -1,0 +1,68 @@
+import re
+import requests
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+SUSPICIOUS_PATTERNS = [
+    (r'coinhive|cryptonight|minero\.cc', 'Обнаружен потенциальный скрипт криптомайнера'),
+    (r'<iframe[^>]+(display:\s*none|visibility:\s*hidden|width=["\']?0)', 'Обнаружен скрытый iframe (возможный редирект или загрузка вирусов)'),
+    (r'eval\(base64_decode|eval\(atob\(|document\.write\(unescape\(', 'Обнаружен обфусцированный (скрытый) JavaScript-код'),
+    (r'window\.location\s*=\s*["\']http', 'Обнаружен принудительный JS-редирект')
+]
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/scan', methods=['POST'])
+def scan():
+    data = request.get_json()
+    raw_url = data.get('url', '').strip()
+
+    if not raw_url:
+        return jsonify({'error': 'Введите адрес сайта'}), 400
+
+    if not raw_url.startswith(('http://', 'https://')):
+        target_url = 'https://' + raw_url
+    else:
+        target_url = raw_url
+
+    domain = target_url.replace('https://', '').replace('http://', '').split('/')[0]
+
+    try:
+        resp = requests.get(target_url, timeout=8, headers={'User-Agent': 'Mozilla/5.0 SecurityScanner/1.0'})
+        html = resp.text
+        headers = resp.headers
+
+        is_https = resp.url.startswith('https://')
+
+        sec_headers = []
+        if 'Strict-Transport-Security' in headers:
+            sec_headers.append('HSTS')
+        if 'X-Frame-Options' in headers:
+            sec_headers.append('X-Frame-Options')
+        if 'Content-Security-Policy' in headers:
+            sec_headers.append('CSP')
+
+        threats = []
+        for pattern, description in SUSPICIOUS_PATTERNS:
+            if re.search(pattern, html, re.IGNORECASE):
+                threats.append(description)
+
+        return jsonify({
+            'domain': domain,
+            'final_url': resp.url,
+            'status_code': resp.status_code,
+            'is_https': is_https,
+            'sec_headers': sec_headers,
+            'threats': threats
+        })
+
+    except requests.exceptions.SSLError:
+        return jsonify({'error': f'Ошибка SSL-сертификата у {domain}! Соединение небезопасно.'}), 200
+    except requests.exceptions.RequestException:
+        return jsonify({'error': f'Не удалось подключиться к {domain}. Проверьте правильность адреса.'}), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)
